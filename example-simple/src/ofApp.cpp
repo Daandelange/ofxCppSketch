@@ -26,6 +26,11 @@ void ofApp::draw(){
 		//p.draw();
 	}
 	mesh.draw(OF_MESH_POINTS);
+
+	// Uncomment the lines below, save and check your app reloading !
+	//ofSetColor(ofColor::white);
+	//ofFill();
+	//ofDrawCircle(100,100,0,100);
 }
 
 //--------------------------------------------------------------

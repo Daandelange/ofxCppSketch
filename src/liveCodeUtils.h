@@ -11,6 +11,22 @@
 #include <set>
 #include <vector>
 
+#ifdef __clang__
+#define OFXCPPSKETCH_DEFAULT_COMPILER "clang++"
+#else
+#define OFXCPPSKETCH_DEFAULT_COMPILER "g++"
+#endif
+
+// Uncomment to use cout instead of printf
+//#define OFXCPPSKETCH_USE_COUT
+
+#ifdef OFXCPPSKETCH_USE_COUT // replace printf ?
+#include <iostream>
+#include <sstream>
+void coutPrintf(const char* format, ...);
+#define printf coutPrintf // override printf call by macro
+#endif
+
 namespace liveCodeUtils {
 	void init();
 	std::string execute(std::string cmd, int *outExitCode = nullptr);
@@ -23,6 +39,13 @@ namespace liveCodeUtils {
 
 	// this returns a list of paths to all .h files in the baseDir
 	std::vector<std::string> getAllHeaderFiles(std::string baseDir);
+
+	// OSX helpers for grabbing system SDK settings
+#ifdef __APPLE__
+	std::string macSysCall(std::string cmd);
+	std::string macGetSysRoot();
+	std::string macGetCompilerPath();
+#endif
 };
 
 

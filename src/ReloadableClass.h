@@ -33,6 +33,11 @@ using namespace std;
 template <class T>
 class ReloadableClass {
 public:
+
+	ReloadableClass(){
+		setDefaults();
+	}
+
 	
 	Dylib dylib;
 	
@@ -102,16 +107,62 @@ public:
 	}
 	
 	void precompileHeader(const string &headerToPrecompile) {
-		
-		string cmd = "g++ -std=c++11 -x c++-header -stdlib=libc++ "
+		std::string cmd = getCompilerBaseCmd();
+		cmd += " -x c++-header -stdlib=libc++ "
 			+ liveCodeUtils::includeListToCFlags(includePaths)
 			+ " " + headerToPrecompile;
 		printf("Precompiling headers: %s\n", cmd.c_str());
 		liveCodeUtils::execute(cmd);
 	}
+#ifdef APPLE
+	void setMacosSdk(string sdkPath){
+		osxSDK = sdkPath;
+	}
+	string getMacosSdk() const {
+		return osxSDK;
+	}
+#endif
+	void setCompiler(string compilerStr){
+		compiler = compilerStr;
+	}
+	string getCompiler() const {
+		return compiler;
+	}
+	void setExtraCompilerFlags(string extraFlags){
+		extraCompilerFlags = " ";
+		extraCompilerFlags += extraFlags;
+	}
+	string getExtraCompilerFlags() const {
+		return extraCompilerFlags;
+	}
+	void setStdVersion(int version){
+		if(version < 11){
+			printf("Invalid STD version : %i ! (minimum=11)", version);
+			return;
+		}
+		stdVersion = " -std=c++";
+		stdVersion += std::to_string(version);
+	}
+	void setStdVersion(std::string version){
+		if(version.find("c++")!=0u){
+			printf("Invalid STD version : %s (it must start with `c++`)", version.c_str());
+			return;
+		}
+		stdVersion = " -std=";
+		stdVersion += version;
+	}
+	string getStdVersionStr() const {
+		return stdVersion;
+	}
 	
 	
 private:
+	string compiler = "";
+	string stdVersion = "";
+	string extraCompilerFlags = "";
+#ifdef __APPLE__
+	string osxSDK = "";
+#endif
 	string lastErrorStr;
 	void recompile() {
 		//printf("Need to recompile %s\n", path.c_str());
@@ -157,10 +208,11 @@ private:
 		
 		string prefixHeaderFlag = "";
 		if(prefixHeader!="") {
-			prefixHeaderFlag = "-include " + prefixHeader + " ";
+			prefixHeaderFlag = " -include " + prefixHeader + " ";
 		}
 		
-		string cmd = "g++ -g -std=c++11 -stdlib=libc++ "+prefixHeaderFlag+" -Wno-deprecated-declarations -c " + cppFile + " -o " + objFile + " "
+		std::string cmd = getCompilerBaseCmd();
+		cmd += " -g -stdlib=libc++" + prefixHeaderFlag + " -Wno-deprecated-declarations -c " + cppFile + " -o " + objFile + " "
 					+ includes;
 		
 		int exitCode = 0;
@@ -168,7 +220,7 @@ private:
 		
 		//printf("Exit code : %d\n", exitCode);
 		if(exitCode==0) {
-			cmd = "g++ -dynamiclib -g -undefined dynamic_lookup -o "+dylibPath + " " + objFile;
+			cmd = getCompilerBaseCmd() + " -dynamiclib -g -undefined dynamic_lookup -o "+dylibPath + " " + objFile;
 			liveCodeUtils::execute(cmd);
 			return dylibPath;
 		} else {
@@ -250,5 +302,75 @@ private:
 		if(File(f).exists()) return f;
 		printf("Error: can't find source file %s\n", file.c_str());
 		return f;
+	}
+
+	std::string getCompilerBaseCmd(){
+		std::string cmd = compiler;
+
+		// Add c++ std version
+		cmd += stdVersion;
+
+#ifdef __APPLE__
+		if(!osxSDK.empty()){
+			cmd += " -isysroot ";
+			cmd += osxSDK;
+		}
+#endif
+		cmd += extraCompilerFlags;
+
+		return cmd;
+	}
+
+	void setDefaults(){
+		// STD VERSION
+		stdVersion = " -std=c++11"; // default
+		// Auto-detect from build settings
+#ifdef __cplusplus
+	#if __cplusplus == 202002L
+		stdVersion = " -std=c++20";
+	#elif __cplusplus == 201703L
+		stdVersion = " -std=c++17";
+	#elif __cplusplus == 201402L
+		stdVersion = " -std=c++14";
+	#endif
+#endif
+		// Use custom one ?
+#ifdef OFXCPPSKETCH_CUSTOM_STD_VERSION
+		stdVersion = OFXCPPSKETCH_CUSTOM_STD_VERSION;
+#endif
+
+		// COMPILER
+		compiler = OFXCPPSKETCH_DEFAULT_COMPILER;
+#ifdef __APPLE__
+		// Use Xcode compiler
+		std::string tmpCompiler = liveCodeUtils::macGetCompilerPath();
+		if(!tmpCompiler.empty()){
+			compiler = tmpCompiler;
+		}
+#endif
+		// Use custom one ?
+#ifdef OFXCPPSKETCH_CUSTOM_COMPILER
+		compiler = OFXCPPSKETCH_CUSTOM_COMPILER;
+#endif
+
+		// APPLE SDK
+#ifdef __APPLE__
+		// Grab compiler from xcode settings
+		std::string sysRootSDK = liveCodeUtils::macGetSysRoot();
+		if(!sysRootSDK.empty()){
+			osxSDK = sysRootSDK;
+		}
+#endif
+		// Use custom one ?
+#ifdef OFXCPPSKETCH_CUSTOM_MAC_SDK
+		osxSDK = OFXCPPSKETCH_CUSTOM_MAC_SDK;
+#endif
+
+		// EXTRA SETTINGS
+#ifdef OFXCPPSKETCH_CUSTOM_EXTRA_FLAGS
+		extraCompilerFlags = OFXCPPSKETCH_CUSTOM_EXTRA_FLAGS;
+#else
+		extraCompilerFlags = "";
+#endif
 	}
 };

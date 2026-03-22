@@ -12,6 +12,19 @@
 #include <sys/stat.h>
 #include <sys/wait.h>
 
+#ifdef OFXCPPSKETCH_USE_COUT
+void coutPrintf(const char* format, ...){
+    std::ostringstream oss;
+    va_list args;
+    va_start(args, format);
+    char buffer[512];
+    vsnprintf(buffer, sizeof(buffer), format, args);
+    oss << buffer;
+    va_end(args);
+    std::cout << oss.str() << std::endl;
+}
+#endif
+
 using namespace std;
 namespace liveCodeUtils {
 	std::chrono::system_clock::time_point startTime;
@@ -23,8 +36,8 @@ void liveCodeUtils::init() {
 
 string liveCodeUtils::execute(string cmd, int *outExitCode) {
 #ifdef __APPLE__
-	printf("Executing %s", cmd.c_str());
-	cmd += " 2>&1";
+	printf("Executing `%s`\n", cmd.c_str());
+	cmd += " 2>&1"; // hide errors
 	FILE* pipe = popen(cmd.c_str(), "r");
 	if (!pipe) return "ERROR";
 	char buffer[128];
@@ -41,6 +54,7 @@ string liveCodeUtils::execute(string cmd, int *outExitCode) {
 	printf("%s\n", result.c_str());
 	return result;
 #else
+	// todo: use ofSystem() here ?
 	return "Error - can't do this";
 #endif
 }
@@ -98,6 +112,50 @@ std::string liveCodeUtils::includeListToCFlags(const std::vector<std::string> &i
 	return str;
 }
 
+// Apple helpers
+#ifdef __APPLE__
+// returns empty string on fail
+std::string liveCodeUtils::macSysCall(std::string cmd){
+    // Open the command for reading
+    cmd += " 2>&1"; // hide errors
+    FILE* pipe = popen(cmd.c_str(), "r");
+    if (!pipe){
+        printf("Warning: Unable to execute cmd : %s\n", cmd.c_str());
+        return "";
+    }
+
+    char buffer[512];
+    std::string result;
+    while (fgets(buffer, sizeof(buffer), pipe) != nullptr) {
+        result += buffer;
+    }
+
+    // Grab exit code
+    int exitCode = pclose(pipe);
+
+    // Trim the newline character from the result
+    if (!result.empty() && result.back() == '\n') {
+        result.pop_back();
+    }
+
+    if(exitCode==0){
+        return result;
+    }
+
+    printf("System command failed: %s\n", result.c_str());
+    return "";
+}
+std::string liveCodeUtils::macGetSysRoot() {
+    // Sample: /Library/Developer/CommandLineTools/SDKs/MacOSX.sdk
+    return liveCodeUtils::macSysCall("xcrun --sdk macosx --show-sdk-path");
+}
+std::string liveCodeUtils::macGetCompilerPath() {
+    // Sample: /Library/Developer/CommandLineTools/usr/bin/clang++
+    std::string cmd = "xcrun --sdk macosx -f ";
+    cmd += OFXCPPSKETCH_DEFAULT_COMPILER;
+    return liveCodeUtils::macSysCall(cmd);
+}
+#endif
 
 
 File::File(string path) {
