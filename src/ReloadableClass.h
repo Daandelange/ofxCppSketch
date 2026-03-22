@@ -109,6 +109,7 @@ public:
 	void precompileHeader(const string &headerToPrecompile) {
 		std::string cmd = getCompilerBaseCmd();
 		cmd += " -x c++-header -stdlib=libc++ "
+			+ extraCompilerFlags
 			+ liveCodeUtils::includeListToCFlags(includePaths)
 			+ " " + headerToPrecompile;
 		printf("Precompiling header `%s`: %s\n", headerToPrecompile.c_str(), cmd.c_str());
@@ -160,6 +161,7 @@ private:
 	string compiler = "";
 	string stdVersion = "";
 	string extraCompilerFlags = "";
+	string extraLinkerFlags = "";
 #ifdef __APPLE__
 	string osxSDK = "";
 #endif
@@ -213,14 +215,14 @@ private:
 		
 		std::string cmd = getCompilerBaseCmd();
 		cmd += " -g -stdlib=libc++" + prefixHeaderFlag + " -Wno-deprecated-declarations -c " + cppFile + " -o " + objFile + " "
-					+ includes;
+					+ includes + extraCompilerFlags;
 		
 		int exitCode = 0;
 		string res =  liveCodeUtils::execute(cmd, &exitCode);
 		
 		//printf("Exit code : %d\n", exitCode);
 		if(exitCode==0) {
-			cmd = getCompilerBaseCmd() + " -dynamiclib -g -undefined dynamic_lookup -o "+dylibPath + " " + objFile;
+			cmd = getCompilerBaseCmd() + " -dynamiclib -g -undefined dynamic_lookup " + extraLinkerFlags + " -o "+dylibPath + " " + objFile;
 			liveCodeUtils::execute(cmd);
 			return dylibPath;
 		} else {
@@ -316,7 +318,6 @@ private:
 			cmd += osxSDK;
 		}
 #endif
-		cmd += extraCompilerFlags;
 
 		return cmd;
 	}
@@ -367,10 +368,15 @@ private:
 #endif
 
 		// EXTRA SETTINGS
-#ifdef OFXCPPSKETCH_CUSTOM_EXTRA_FLAGS
-		extraCompilerFlags = OFXCPPSKETCH_CUSTOM_EXTRA_FLAGS;
+#ifdef OFXCPPSKETCH_CUSTOM_COMPILER_FLAGS
+		extraCompilerFlags = OFXCPPSKETCH_CUSTOM_COMPILER_FLAGS;
 #else
 		extraCompilerFlags = "";
+#endif
+#ifdef OFXCPPSKETCH_CUSTOM_LINKER_FLAGS
+		extraLinkerFlags = OFXCPPSKETCH_CUSTOM_LINKER_FLAGS;
+#else
+		extraLinkerFlags = "";
 #endif
 	}
 };

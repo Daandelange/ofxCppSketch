@@ -133,8 +133,10 @@ protected:
 	
 	bool isIncludePath(string path) {
 		int incPos = path.rfind("/include");
-		return (incPos==path.size()-8) ||
-		(incPos==path.size()-9 && path[path.size()-1]=='/');
+		int incPosSrc = path.rfind("/src"); // For when source folder has includes too
+		return
+			((incPos==path.size()-8) || (incPos==path.size()-9 && path[path.size()-1]=='/')) ||
+			((incPosSrc==path.size()-4) || (incPosSrc==path.size()-5 && path[path.size()-1]=='/'));
 	}
 	
 	

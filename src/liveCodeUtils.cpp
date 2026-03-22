@@ -17,7 +17,7 @@ void coutPrintf(const char* format, ...){
     std::ostringstream oss;
     va_list args;
     va_start(args, format);
-    char buffer[512];
+    static char buffer[2048];
     vsnprintf(buffer, sizeof(buffer), format, args);
     oss << buffer;
     va_end(args);
@@ -74,8 +74,18 @@ void recursivelyFindAllDirs(Directory curr, vector<Directory> &dirs) {
 	dirs.push_back(curr);
 	curr.list();
 	for(int i = 0; i < curr.size(); i++) {
-		if(curr[i].isDirectory()) {
-			recursivelyFindAllDirs(Directory(curr[i]), dirs);
+		File& next = curr[i];
+		if(next.isDirectory()) {
+			// Ignore some folders (blacklist)
+			if(
+				next.fileName().find(".") == 0			// invisible files (.git, etc.)
+				|| next.fileName()=="obj"				// build folders
+				|| next.fileName().find("example") == 0	// ignore example folders
+				|| next.fileName().find("build-") == 0	// ignore example folders
+			){
+				continue;
+			}
+			recursivelyFindAllDirs(Directory(next), dirs);
 		}
 	}
 }
