@@ -238,7 +238,7 @@ bool File::isDirectory() const {
 	
 	// Attempt to get the file attributes 
 	if(stat(path.c_str(),&stFileInfo)!=0) {
-		printf("File not found\n");
+		printf("File not found: %s\n", path.c_str());
 		return false;
 	}
 	return (stFileInfo.st_mode & S_IFMT) == S_IFDIR;
@@ -374,7 +374,7 @@ bool Directory::list() {
 		}
 		closedir(dir);
 	} else {
-		printf("Couldn't open dir\n");
+		printf("Couldn't open dir : %s\n", path.c_str());
 		perror("");
 		return false;
 	}

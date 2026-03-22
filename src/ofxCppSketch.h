@@ -13,7 +13,27 @@ public:
 
 	ofxCppSketch(string className, string mainFilePath) : ofBaseApp() {
 		this->className = className;
-		srcDir = std::filesystem::path(mainFilePath).parent_path();
+		// Allow "weak" paths.
+		// Lets user provide "/of_v0.12.0/apps/cppSketch/src/ofAppConfig.cpp/../ofApp.php" as path
+		// With this code in ofAppConfig.cpp: `#define CPPSKETCH_APPFILE __FILE__ "/../ofApp.cpp"`
+		std::string resolvedPath = std::filesystem::weakly_canonical(mainFilePath).string();
+		srcDir = std::filesystem::path(resolvedPath).parent_path();
+		ofDirectory srcDirectory(srcDir);
+		if(!srcDirectory.exists()){
+			ofLogError("ofxCppSketch::ofxCppSketch()") << "Source directory `" << srcDir << "` doesn't exist !";
+		}
+
+		// Show debug setup info
+#ifdef DEBUG
+		std::string libsPath = getLibsPath();
+		std::string addonsPath = getAddonsPath();
+		ofDirectory libsDir(libsPath);
+		ofDirectory addonsDir(addonsPath);
+		ofLogNotice("ofxCppSketch::ofxCppSketch()")
+			<< " - New live sketch : " << className << " @ " << srcDir << (srcDirectory.exists()?" (ok)":" (error!)") << std::endl
+			<< " - Libs            : " << getLibsPath() << (libsDir.exists()?" (ok)":" (error!)") << std::endl
+			<< " - Addons          : " << getAddonsPath() << (addonsDir.exists()?" (ok)":" (error!)")  << std::endl;
+#endif
 	}
 	
 	void setup() override {
@@ -139,9 +159,14 @@ protected:
 		vector<string> addons;
 		std::string line;
 		while (std::getline(infile, line)) {
+			// Normally, addons can be disabled by commenting them `#`.
+			if(line.find('#')!=line.npos){
+				printf("Ignoring comment: %s", line.c_str());
+				continue;
+			}
 			if(line.size()>3 /*&& line!="ofxCppSketch"*/) { // check there's some text on the line
 				addons.push_back(line);
-				printf("%s\n", line.c_str());
+				printf("Found addon: %s", line.c_str());
 			}
 		}
 		return addons;

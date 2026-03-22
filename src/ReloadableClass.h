@@ -111,7 +111,7 @@ public:
 		cmd += " -x c++-header -stdlib=libc++ "
 			+ liveCodeUtils::includeListToCFlags(includePaths)
 			+ " " + headerToPrecompile;
-		printf("Precompiling headers: %s\n", cmd.c_str());
+		printf("Precompiling header `%s`: %s\n", headerToPrecompile.c_str(), cmd.c_str());
 		liveCodeUtils::execute(cmd);
 	}
 #ifdef APPLE
