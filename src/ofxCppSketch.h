@@ -191,8 +191,11 @@ protected:
 	}
 
 	void exit() override {
-		if(liveApp) liveApp->exit();
-		delete liveApp;
+		if(liveApp){
+			liveApp->exit();
+			delete liveApp;
+			liveApp = nullptr;
+		}
 	}
 	
 	void keyPressed(int key) override {
