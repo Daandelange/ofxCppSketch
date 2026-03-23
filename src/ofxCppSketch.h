@@ -43,9 +43,16 @@ public:
 			getSoundStream()->outCallback = nullptr;
 		};
 		reloader.reloaded = [this](ofBaseApp *app) {
-			
-			liveApp = app;
-			liveApp->setup();
+			if(app!=nullptr){
+				// Unload previous one
+				if(liveApp){
+					liveApp->exit();
+					delete liveApp;
+				}
+				// Replace
+				liveApp = app;
+				liveApp->setup();
+			}
 			getSoundStream()->audioMutex.unlock();
 		};
 		
@@ -181,6 +188,11 @@ protected:
 	
 	void draw() override {
 		if(liveApp) liveApp->draw();
+	}
+
+	void exit() override {
+		if(liveApp) liveApp->exit();
+		delete liveApp;
 	}
 	
 	void keyPressed(int key) override {
